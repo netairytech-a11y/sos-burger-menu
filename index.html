@@ -133,7 +133,7 @@
                 <div class="flex justify-between items-center bg-cardBg p-4 rounded-2xl border border-gray-800">
                     <div class="flex items-center space-x-2 text-xs text-emerald-400 font-bold">
                         <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
-                        <span>Cloud Hybrid Sync Active (Multi-Device Connected)</span>
+                        <span>Cloud Hybrid Sync Active</span>
                     </div>
                     <button onclick="adminLogout()" class="text-xs bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white px-3 py-1.5 rounded-xl border border-rose-500/20 font-bold transition">
                         <i class="fa-solid fa-right-from-bracket mr-1"></i> Logout
@@ -170,7 +170,7 @@
                     </div>
                 </div>
 
-                <!-- Permanent NFC Table Links Generator (Fixed Domain) -->
+                <!-- Permanent NFC Table Links Generator -->
                 <div class="bg-cardBg p-6 rounded-2xl border border-gray-800 space-y-4">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-800 pb-4 gap-3">
                         <div>
@@ -178,7 +178,7 @@
                                 <i class="fa-solid fa-wifi text-amber-400"></i>
                                 <span>Permanent NFC Table Links (Never Change)</span>
                             </h3>
-                            <p class="text-xs text-gray-400">Copy these fixed links once and write them into your NFC tags/stickers permanently.</p>
+                            <p class="text-xs text-gray-400">Copy these fixed links once and write them into your NFC tags/stickers.</p>
                         </div>
                         <button onclick="generateNfcTableLinks()" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-darkBg rounded-xl text-xs font-extrabold transition flex items-center space-x-1.5 shadow-lg shadow-amber-500/20">
                             <i class="fa-solid fa-qrcode"></i>
@@ -290,13 +290,13 @@
         </div>
     </div>
 
-    <!-- Application Script -->
+    <!-- Application Script with Safe Protected Catalog Fallback -->
     <script>
         const BIN_ID = "657a8b3812a56e761b0d2449"; 
         const API_KEY = "$2a$10$7.G5H9q2Z6J3x8W1v4b2veB7qZ9Yx1K3l2m4n5o6p7q8r9s0t1u2v3";
 
-        // Default Permanent Products List (Ensures catalog never goes blank)
-        let defaultProducts = [
+        // Permanent Protected Default Catalog
+        const defaultProducts = [
             { id: 1, name: "SOS Signature Crispy Burger", category: "Burger", price: 159, image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500", available: true },
             { id: 2, name: "Double Decker Cheese Burger", category: "Burger", price: 219, image: "https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=500", available: true },
             { id: 3, name: "SOS Special Loaded Pizza", category: "Pizza", price: 299, image: "https://images.unsplash.com/photo-1604382355076-af4b0eb60143?w=500", available: true },
@@ -320,6 +320,10 @@
             }
             document.getElementById('display-table-info').innerText = `Locked Session: ${currentTable} (Scan Verified)`;
             
+            // Initial render using default products immediately
+            renderCustomerMenu();
+            renderAdminProducts();
+            
             fetchCloudData();
 
             if(localStorage.getItem('sos_admin_logged') === 'true') {
@@ -328,7 +332,7 @@
                 document.getElementById('admin-btn-text').innerText = "Dashboard (Active)";
             }
 
-            // Realtime background cloud sync every 2 seconds
+            // Sync with cloud every 2 seconds
             setInterval(() => {
                 fetchCloudData();
             }, 2000);
@@ -574,7 +578,11 @@
         }
 
         function saveDataToCloud() {
-            const payload = { products, liveOrders, completedSales };
+            const payload = { 
+                products: products.length > 0 ? products : defaultProducts, 
+                liveOrders, 
+                completedSales 
+            };
             localStorage.setItem('sos_local_backup', JSON.stringify(payload));
             
             fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
@@ -595,8 +603,10 @@
             .then(data => {
                 if(data && data.record) {
                     let cloudData = data.record;
-                    if(cloudData.products && cloudData.products.length > 0) {
+                    if(cloudData.products && Array.isArray(cloudData.products) && cloudData.products.length > 0) {
                         products = cloudData.products;
+                    } else {
+                        products = [...defaultProducts];
                     }
                     if(cloudData.completedSales) completedSales = cloudData.completedSales;
                     if(cloudData.liveOrders) {
@@ -613,25 +623,26 @@
             })
             .catch(err => {
                 let cached = JSON.parse(localStorage.getItem('sos_local_backup'));
-                if(cached) {
-                    if(cached.products && cached.products.length > 0) products = cached.products;
+                if(cached && cached.products && cached.products.length > 0) {
+                    products = cached.products;
                     liveOrders = cached.liveOrders || liveOrders;
                     completedSales = cached.completedSales || completedSales;
-                    renderLiveOrders();
-                    updateRevenueDisplay();
-                    renderAdminProducts();
-                    renderCustomerMenu();
+                } else {
+                    products = [...defaultProducts];
                 }
+                renderLiveOrders();
+                updateRevenueDisplay();
+                renderAdminProducts();
+                renderCustomerMenu();
             });
         }
 
-        // PERMANENT NFC LINKS (Hardcoded domain so links never change automatically)
+        // Permanent Fixed NFC Links
         function generateNfcTableLinks() {
             let container = document.getElementById('nfc-links-container');
             if(!container) return;
             container.innerHTML = "";
             
-            // Fixed permanent domain base URL
             let permanentBaseUrl = "https://sos-burger-menu.onrender.com/";
 
             for(let i = 1; i <= 15; i++) {
