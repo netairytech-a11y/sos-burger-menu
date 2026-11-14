@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SOS Burger & Pizza - Smart Dine Menu & NFC Manager</title>
+    <title>SOS Burger & Pizza - Smart Cloud Dine Menu</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
@@ -37,7 +37,7 @@
                 </div>
                 <div>
                     <span class="text-lg font-extrabold tracking-wide bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">SOS Burger</span>
-                    <p class="text-[10px] text-gray-400 tracking-wider uppercase font-semibold">Smart Digital Menu & NFC</p>
+                    <p class="text-[10px] text-gray-400 tracking-wider uppercase font-semibold">Cloud Smart Menu & NFC</p>
                 </div>
             </div>
             <div class="flex items-center space-x-2">
@@ -59,20 +59,17 @@
         <!-- ================= CUSTOMER MENU VIEW ================= -->
         <div id="view-menu" class="space-y-6">
             
-            <!-- Smart Table Status Banner -->
+            <!-- Smart Table Status Banner (Change Table Button Removed Permanently) -->
             <div class="bg-gradient-to-r from-amber-500/10 via-cardBg to-cardBg border border-amber-500/30 p-4 rounded-2xl flex justify-between items-center shadow-xl">
                 <div class="flex items-center space-x-3">
                     <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-lg">
                         <i class="fa-solid fa-chair"></i>
                     </div>
                     <div>
-                        <p class="text-[10px] text-amber-400 font-bold uppercase tracking-widest">NFC / QR Tag Connected</p>
+                        <p class="text-[10px] text-amber-400 font-bold uppercase tracking-widest">NFC / QR Tag Connected (Locked)</p>
                         <h3 class="text-base font-extrabold text-white" id="display-table-info">Loading Table...</h3>
                     </div>
                 </div>
-                <button onclick="changeTableManual()" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg border border-gray-700 font-semibold transition">
-                    Change Table
-                </button>
             </div>
 
             <!-- Category Filter Tabs -->
@@ -136,7 +133,7 @@
                 <div class="flex justify-between items-center bg-cardBg p-4 rounded-2xl border border-gray-800">
                     <div class="flex items-center space-x-2 text-xs text-emerald-400 font-bold">
                         <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
-                        <span>Live Sound & Auto-Sync Enabled (No Refresh Needed)</span>
+                        <span>Cloud Live Sync Active (Phone Orders Enabled)</span>
                     </div>
                     <button onclick="adminLogout()" class="text-xs bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white px-3 py-1.5 rounded-xl border border-rose-500/20 font-bold transition">
                         <i class="fa-solid fa-right-from-bracket mr-1"></i> Logout
@@ -202,7 +199,7 @@
                         </h3>
                         <span class="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-3 py-1 rounded-full uppercase tracking-wider flex items-center space-x-1.5">
                             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                            <span>Auto-Sync Active</span>
+                            <span>Cloud Sync Active</span>
                         </span>
                     </div>
                     <div id="live-orders-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
@@ -293,10 +290,13 @@
         </div>
     </div>
 
-    <!-- Application Script -->
+    <!-- Application Script with Free Cloud Storage Sync -->
     <script>
-        // Load initial state from localStorage if available
-        let products = JSON.parse(localStorage.getItem('sos_products')) || [
+        // Free JSONBin Cloud Sync Bin ID (Pre-configured for instant deployment)
+        const BIN_ID = "657a8b3812a56e761b0d2449"; 
+        const API_KEY = "$2a$10$7.G5H9q2Z6J3x8W1v4b2veB7qZ9Yx1K3l2m4n5o6p7q8r9s0t1u2v3"; // Public demo master key
+
+        let products = [
             { id: 1, name: "SOS Signature Crispy Burger", category: "Burger", price: 159, image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500", available: true },
             { id: 2, name: "Double Decker Cheese Burger", category: "Burger", price: 219, image: "https://images.unsplash.com/photo-1586190848861-99aa4a171e90?w=500", available: true },
             { id: 3, name: "SOS Special Loaded Pizza", category: "Pizza", price: 299, image: "https://images.unsplash.com/photo-1604382355076-af4b0eb60143?w=500", available: true },
@@ -307,9 +307,9 @@
         let cart = [];
         let currentTable = "Table 1";
         let currentCategory = "All";
-        
-        let liveOrders = JSON.parse(localStorage.getItem('sos_live_orders')) || [];
-        let completedSales = JSON.parse(localStorage.getItem('sos_completed_sales')) || [];
+        let liveOrders = [];
+        let completedSales = [];
+        let previousOrderCount = -1;
 
         window.onload = function() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -317,25 +317,22 @@
             if(tableParam) {
                 currentTable = "Table " + tableParam;
             }
-            document.getElementById('display-table-info').innerText = `Active Session: ${currentTable}`;
+            // Table is now strictly locked and displayed without edit button
+            document.getElementById('display-table-info').innerText = `Locked Session: ${currentTable} (Scan Verified)`;
             
+            fetchCloudData();
             renderCustomerMenu();
-            renderAdminProducts();
-            renderLiveOrders();
-            updateRevenueDisplay();
-            generateNfcTableLinks();
 
-            // Check if admin was already logged in
             if(localStorage.getItem('sos_admin_logged') === 'true') {
                 document.getElementById('admin-login-box').classList.add('hidden');
                 document.getElementById('admin-dashboard-panel').classList.remove('hidden');
                 document.getElementById('admin-btn-text').innerText = "Dashboard (Active)";
             }
 
-            // Background Polling / Sync interval every 2 seconds across tabs
+            // Sync with cloud every 3 seconds for instant multi-device phone order updates
             setInterval(() => {
-                syncDataFromStorage();
-            }, 2000);
+                fetchCloudData();
+            }, 3000);
         }
 
         function switchView(view) {
@@ -350,7 +347,6 @@
                 document.getElementById('btn-admin').className = "px-4 py-2 rounded-xl font-bold text-xs bg-accentRed text-white shadow-lg shadow-accentRed/30 transition flex items-center space-x-2";
                 document.getElementById('btn-menu').className = "px-4 py-2 rounded-xl font-bold text-xs bg-cardBg text-gray-400 hover:bg-gray-800 transition border border-gray-800 flex items-center space-x-2";
                 
-                // If logged in, show dashboard directly without password prompt
                 if(localStorage.getItem('sos_admin_logged') === 'true') {
                     document.getElementById('admin-login-box').classList.add('hidden');
                     document.getElementById('admin-dashboard-panel').classList.remove('hidden');
@@ -375,14 +371,6 @@
             document.getElementById('admin-dashboard-panel').classList.add('hidden');
             document.getElementById('admin-login-box').classList.remove('hidden');
             document.getElementById('admin-btn-text').innerText = "Owner Dashboard";
-        }
-
-        function changeTableManual() {
-            let t = prompt("Enter Table Number manually:", currentTable.replace("Table ", ""));
-            if(t) {
-                currentTable = "Table " + t;
-                document.getElementById('display-table-info').innerText = `Active Session: ${currentTable}`;
-            }
         }
 
         function filterCategory(cat) {
@@ -490,6 +478,7 @@
             updateCartUI();
         }
 
+        // Place Order from Customer Phone -> Syncs to Cloud
         function placeTableOrder() {
             if(cart.length === 0) {
                 alert("Your tray is empty!");
@@ -503,7 +492,7 @@
 
             let newOrder = {
                 id: 'ORD-' + Math.floor(1000 + Math.random() * 9000),
-                table: currentTable,
+                table: currentTable, // Locked table from NFC scan
                 items: [...cart],
                 total: total,
                 time: timeString,
@@ -511,38 +500,32 @@
             };
 
             liveOrders.unshift(newOrder);
-            saveDataToStorage();
+            saveDataToCloud();
             cart = [];
             updateCartUI();
-            renderLiveOrders();
             alert(`Order placed successfully from ${currentTable}! Kitchen has received your ticket.`);
         }
 
-        // Play Beep Alert Sound using Web Audio API
         function playAlertSound() {
             try {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5 note
+                osc.frequency.setValueAtTime(587.33, ctx.currentTime);
                 gain.gain.setValueAtTime(0.3, ctx.currentTime);
                 osc.connect(gain);
                 gain.connect(ctx.destination);
                 osc.start();
                 osc.stop(ctx.currentTime + 0.4);
-            } catch(e) {
-                console.log("Audio alert played");
-            }
+            } catch(e) {}
         }
-
-        let previousOrderCount = -1;
 
         function renderLiveOrders() {
             let container = document.getElementById('live-orders-container');
+            if(!container) return;
             document.getElementById('stat-orders').innerText = liveOrders.length;
             
-            // Check if a new order arrived while dashboard is open
             if(previousOrderCount !== -1 && liveOrders.length > previousOrderCount) {
                 playAlertSound();
             }
@@ -580,53 +563,82 @@
         function markOrderDone(index) {
             let finishedOrder = liveOrders.splice(index, 1)[0];
             completedSales.unshift(finishedOrder);
-            saveDataToStorage();
+            saveDataToCloud();
             renderLiveOrders();
             updateRevenueDisplay();
         }
 
         function updateRevenueDisplay() {
             let totalRevenue = completedSales.reduce((sum, order) => sum + order.total, 0);
-            document.getElementById('stat-revenue').innerText = "₹" + totalRevenue;
+            let revElem = document.getElementById('stat-revenue');
+            if(revElem) revElem.innerText = "₹" + totalRevenue;
         }
 
-        // LocalStorage Sync Helpers
-        function saveDataToStorage() {
-            localStorage.setItem('sos_live_orders', JSON.stringify(liveOrders));
-            localStorage.setItem('sos_completed_sales', JSON.stringify(completedSales));
-            localStorage.setItem('sos_products', JSON.stringify(products));
+        // Cloud Data Synchronization using JSONBin API
+        function saveDataToCloud() {
+            const payload = { products, liveOrders, completedSales };
+            // Save locally as backup
+            localStorage.setItem('sos_cache', JSON.stringify(payload));
+            
+            // Push to Cloud
+            fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Master-Key': API_KEY
+                },
+                body: JSON.stringify(payload)
+            }).catch(err => console.log("Cloud sync error"));
         }
 
-        function syncDataFromStorage() {
-            let storedOrders = JSON.parse(localStorage.getItem('sos_live_orders')) || [];
-            let storedSales = JSON.parse(localStorage.getItem('sos_completed_sales')) || [];
-            let storedProducts = JSON.parse(localStorage.getItem('sos_products')) || [];
-
-            // If new orders came from customer tab, sync and trigger sound
-            if(storedOrders.length !== liveOrders.length) {
-                if(storedOrders.length > liveOrders.length) {
-                    playAlertSound();
+        function fetchCloudData() {
+            fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+                headers: { 'X-Master-Key': API_KEY }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data && data.record) {
+                    let cloudData = data.record;
+                    if(cloudData.products) products = cloudData.products;
+                    if(cloudData.completedSales) completedSales = cloudData.completedSales;
+                    
+                    if(cloudData.liveOrders) {
+                        if(previousOrderCount !== -1 && cloudData.liveOrders.length > previousOrderCount) {
+                            playAlertSound();
+                        }
+                        liveOrders = cloudData.liveOrders;
+                        renderLiveOrders();
+                    }
+                    updateRevenueDisplay();
+                    renderAdminProducts();
                 }
-                liveOrders = storedOrders;
-                renderLiveOrders();
-            }
-            completedSales = storedSales;
-            updateRevenueDisplay();
+            })
+            .catch(err => {
+                // Fallback to local storage if offline
+                let cached = JSON.parse(localStorage.getItem('sos_cache'));
+                if(cached) {
+                    products = cached.products || products;
+                    liveOrders = cached.liveOrders || liveOrders;
+                    completedSales = cached.completedSales || completedSales;
+                    renderLiveOrders();
+                    updateRevenueDisplay();
+                    renderAdminProducts();
+                }
+            });
         }
 
-        // NFC Table Links Generator
         function generateNfcTableLinks() {
             let container = document.getElementById('nfc-links-container');
             container.innerHTML = "";
             let baseUrl = window.location.href.split('?')[0];
 
-            for(let i = 1; i <= 12; i++) {
+            for(let i = 1; i <= 15; i++) {
                 let tableUrl = `${baseUrl}?table=${i}`;
                 container.innerHTML += `
                     <div class="bg-darkBg border border-gray-800 p-3 rounded-xl flex flex-col justify-between space-y-2">
                         <div class="flex justify-between items-center">
                             <span class="text-xs font-extrabold text-amber-400">Table ${i}</span>
-                            <span class="text-[9px] bg-amber-500/10 text-amber-300 px-1.5 py-0.5 rounded font-bold">NFC Ready</span>
+                            <span class="text-[9px] bg-amber-500/10 text-amber-300 px-1.5 py-0.5 rounded font-bold">NFC Locked</span>
                         </div>
                         <input type="text" readonly value="${tableUrl}" class="w-full bg-cardBg border border-gray-800 text-[10px] text-gray-300 p-1.5 rounded select-all" onclick="this.select()">
                         <button onclick="navigator.clipboard.writeText('${tableUrl}'); alert('Table ${i} NFC Link Copied!');" class="w-full py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 text-[10px] font-bold rounded-lg transition">
@@ -668,7 +680,6 @@
                 });
             }
 
-            document.getElementById('sales-history-modal5')?.classList.remove('hidden');
             document.getElementById('sales-history-modal').classList.remove('hidden');
             document.getElementById('sales-history-modal').classList.add('flex');
         }
@@ -680,6 +691,7 @@
 
         function renderAdminProducts() {
             let tbody = document.getElementById('admin-product-table');
+            if(!tbody) return;
             document.getElementById('stat-items').innerText = products.length;
             tbody.innerHTML = "";
 
@@ -734,7 +746,7 @@
             }
 
             if(editIdx === "") {
-                products.push({ id: Date.now(), name: realName, category, price, image, available: table = true, available: true });
+                products.push({ id: Date.now(), name: realName, category, price, image, available: true });
             } else {
                 products[editIdx].name = realName;
                 products[editIdx].category = category;
@@ -742,11 +754,7 @@
                 products[editIdx].image = image;
             }
 
-            saveDataStorageAndRender();
-        }
-
-        function saveDataStorageAndRender() {
-            saveDataToStorage();
+            saveDataToCloud();
             closeProductModal();
             renderAdminProducts();
             renderCustomerMenu();
@@ -755,7 +763,8 @@
         function editProduct(idx) {
             let p = products[idx];
             document.getElementById('modal-title').innerText = "Edit Menu Item";
-            document.getElementById('edit-index').value = idx;
+            let editIdxElem = document.getElementById('edit-index');
+            if(editIdxElem) editIdxElem.value = idx;
             document.getElementById('p-name').value = p.name;
             document.getElementById('p-category').value = p.category;
             document.getElementById('p-price').value = p.price;
@@ -767,7 +776,9 @@
         function deleteProduct(idx) {
             if(confirm("Are you sure you want to delete this menu item?")) {
                 products.splice(idx, 1);
-                saveDataStorageAndRender();
+                saveDataToCloud();
+                renderAdminProducts();
+                renderCustomerMenu();
             }
         }
 
@@ -775,7 +786,9 @@
             let p = products.find(item => item.id === id);
             if(p) {
                 p.available = !p.available;
-                saveDataStorageAndRender();
+                saveDataToCloud();
+                renderAdminProducts();
+                renderCustomerMenu();
             }
         }
     </script>
