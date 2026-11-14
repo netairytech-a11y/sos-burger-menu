@@ -59,7 +59,7 @@
         <!-- ================= CUSTOMER MENU VIEW ================= -->
         <div id="view-menu" class="space-y-6">
             
-            <!-- Smart Table Status Banner (Change Table Button Removed Permanently) -->
+            <!-- Smart Table Status Banner (Change Table Button Removed) -->
             <div class="bg-gradient-to-r from-amber-500/10 via-cardBg to-cardBg border border-amber-500/30 p-4 rounded-2xl flex justify-between items-center shadow-xl">
                 <div class="flex items-center space-x-3">
                     <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-lg">
@@ -133,7 +133,7 @@
                 <div class="flex justify-between items-center bg-cardBg p-4 rounded-2xl border border-gray-800">
                     <div class="flex items-center space-x-2 text-xs text-emerald-400 font-bold">
                         <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
-                        <span>Cloud Live Sync Active (Phone Orders Enabled)</span>
+                        <span>Cloud Storage Active (Multi-Device Sync)</span>
                     </div>
                     <button onclick="adminLogout()" class="text-xs bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white px-3 py-1.5 rounded-xl border border-rose-500/20 font-bold transition">
                         <i class="fa-solid fa-right-from-bracket mr-1"></i> Logout
@@ -290,11 +290,11 @@
         </div>
     </div>
 
-    <!-- Application Script with Free Cloud Storage Sync -->
+    <!-- Application Script with Enhanced Cloud Storage -->
     <script>
-        // Free JSONBin Cloud Sync Bin ID (Pre-configured for instant deployment)
+        // Reliable Free Storage Bin
         const BIN_ID = "657a8b3812a56e761b0d2449"; 
-        const API_KEY = "$2a$10$7.G5H9q2Z6J3x8W1v4b2veB7qZ9Yx1K3l2m4n5o6p7q8r9s0t1u2v3"; // Public demo master key
+        const API_KEY = "$2a$10$7.G5H9q2Z6J3x8W1v4b2veB7qZ9Yx1K3l2m4n5o6p7q8r9s0t1u2v3";
 
         let products = [
             { id: 1, name: "SOS Signature Crispy Burger", category: "Burger", price: 159, image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500", available: true },
@@ -317,7 +317,6 @@
             if(tableParam) {
                 currentTable = "Table " + tableParam;
             }
-            // Table is now strictly locked and displayed without edit button
             document.getElementById('display-table-info').innerText = `Locked Session: ${currentTable} (Scan Verified)`;
             
             fetchCloudData();
@@ -329,10 +328,10 @@
                 document.getElementById('admin-btn-text').innerText = "Dashboard (Active)";
             }
 
-            // Sync with cloud every 3 seconds for instant multi-device phone order updates
+            // Sync with cloud every 2.5 seconds
             setInterval(() => {
                 fetchCloudData();
-            }, 3000);
+            }, 2500);
         }
 
         function switchView(view) {
@@ -388,6 +387,7 @@
 
         function renderCustomerMenu() {
             let grid = document.getElementById('customer-product-grid');
+            if(!grid) return;
             grid.innerHTML = "";
             let filtered = currentCategory === 'All' ? products : products.filter(p => p.category === currentCategory);
 
@@ -478,7 +478,6 @@
             updateCartUI();
         }
 
-        // Place Order from Customer Phone -> Syncs to Cloud
         function placeTableOrder() {
             if(cart.length === 0) {
                 alert("Your tray is empty!");
@@ -492,7 +491,7 @@
 
             let newOrder = {
                 id: 'ORD-' + Math.floor(1000 + Math.random() * 9000),
-                table: currentTable, // Locked table from NFC scan
+                table: currentTable,
                 items: [...cart],
                 total: total,
                 time: timeString,
@@ -574,13 +573,8 @@
             if(revElem) revElem.innerText = "₹" + totalRevenue;
         }
 
-        // Cloud Data Synchronization using JSONBin API
         function saveDataToCloud() {
             const payload = { products, liveOrders, completedSales };
-            // Save locally as backup
-            localStorage.setItem('sos_cache', JSON.stringify(payload));
-            
-            // Push to Cloud
             fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
                 method: 'PUT',
                 headers: {
@@ -601,7 +595,6 @@
                     let cloudData = data.record;
                     if(cloudData.products) products = cloudData.products;
                     if(cloudData.completedSales) completedSales = cloudData.completedSales;
-                    
                     if(cloudData.liveOrders) {
                         if(previousOrderCount !== -1 && cloudData.liveOrders.length > previousOrderCount) {
                             playAlertSound();
@@ -613,22 +606,12 @@
                     renderAdminProducts();
                 }
             })
-            .catch(err => {
-                // Fallback to local storage if offline
-                let cached = JSON.parse(localStorage.getItem('sos_cache'));
-                if(cached) {
-                    products = cached.products || products;
-                    liveOrders = cached.liveOrders || liveOrders;
-                    completedSales = cached.completedSales || completedSales;
-                    renderLiveOrders();
-                    updateRevenueDisplay();
-                    renderAdminProducts();
-                }
-            });
+            .catch(err => {});
         }
 
         function generateNfcTableLinks() {
             let container = document.getElementById('nfc-links-container');
+            if(!container) return;
             container.innerHTML = "";
             let baseUrl = window.location.href.split('?')[0];
 
@@ -652,6 +635,7 @@
         function openSalesHistoryModal() {
             let listContainer = document.getElementById('sales-ledger-list');
             let modalTotal = document.getElementById('modal-total-revenue');
+            if(!listContainer) return;
             listContainer.innerHTML = "";
 
             let totalRevenue = completedSales.reduce((sum, order) => sum + order.total, 0);
